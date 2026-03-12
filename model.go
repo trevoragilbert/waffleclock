@@ -266,11 +266,11 @@ func (m model) viewList() string {
 		meta = truncate(meta, m.width-2)
 
 		if i == m.cursor {
-			b.WriteString(styleSelected.Render(" > "+title) + "\n")
-			b.WriteString(styleSelected.Render(meta) + "\n")
+			b.WriteString("> " + styleBold.Render(title) + "\n")
+			b.WriteString("  " + styleDim.Render(meta) + "\n")
 		} else {
-			b.WriteString("   " + title + "\n")
-			b.WriteString(styleDim.Render(meta) + "\n")
+			b.WriteString("  " + title + "\n")
+			b.WriteString("  " + styleDim.Render(meta) + "\n")
 		}
 		b.WriteString("\n")
 	}
@@ -320,14 +320,14 @@ func (m model) viewDetail() string {
 		for _, d := range h.Discussion {
 			title := truncate(d.Title, m.width-4)
 			if idx == m.detailCursor {
-				b.WriteString(styleSelected.Render(" > "+title) + "\n")
+				b.WriteString("> " + styleBold.Render(title) + "\n")
 				if d.Source != "" {
-					b.WriteString(styleSelected.Render("   "+d.Source) + "\n")
+					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
 				}
 			} else {
-				b.WriteString("   " + title + "\n")
+				b.WriteString("  " + title + "\n")
 				if d.Source != "" {
-					b.WriteString(styleDim.Render("   "+d.Source) + "\n")
+					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
 				}
 			}
 			b.WriteString("\n")
@@ -349,14 +349,14 @@ func (m model) viewDetail() string {
 			}
 			src := c.Source
 			if idx == m.detailCursor {
-				b.WriteString(styleSelected.Render(" > "+text) + "\n")
+				b.WriteString("> " + styleBold.Render(text) + "\n")
 				if src != "" {
-					b.WriteString(styleSelected.Render("   "+src) + "\n")
+					b.WriteString("  " + styleDim.Render(src) + "\n")
 				}
 			} else {
-				b.WriteString("   " + text + "\n")
+				b.WriteString("  " + text + "\n")
 				if src != "" {
-					b.WriteString(styleDim.Render("   "+src) + "\n")
+					b.WriteString("  " + styleDim.Render(src) + "\n")
 				}
 			}
 			b.WriteString("\n")

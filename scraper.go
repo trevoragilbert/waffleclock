@@ -32,73 +32,73 @@ func fetchFeed() (Feed, error) {
 
 	var feed Feed
 
-	// Each story cluster lives inside a div.itc2. Within it:
-	//   div.item        — the main headline row
-	//   div.di          — individual discussion/related-article items
-	doc.Find("div.itc2").Each(func(_ int, cluster *goquery.Selection) {
-		item := cluster.Find("div.item").First()
-		if item.Length() == 0 {
+	// Each story cluster lives in a div.clus. Inside it:
+	//   First div.item      — the main headline row
+	//   div.relitems        — optional related-item rows (same story, different angle)
+	//   div.di (inside div#Np1, hidden) — full discussion links with titles
+	doc.Find("div.clus").Each(func(_ int, clus *goquery.Selection) {
+		// The very first div.item in the cluster is the main story.
+		mainItem := clus.Find("div.item").First()
+		if mainItem.Length() == 0 {
 			return
 		}
 
-		anchor := item.Find("strong.L1 a.ourh, a.ourh").First()
-		if anchor.Length() == 0 {
+		// Main headline: STRONG with an L-class (L1–L4) containing A.ourh
+		mainAnchor := mainItem.Find("strong[class] a.ourh").First()
+		if mainAnchor.Length() == 0 {
 			return
 		}
 
-		title := strings.TrimSpace(anchor.Text())
-		url, _ := anchor.Attr("href")
-		if url == "" || title == "" {
-			return
+		title := strings.TrimSpace(mainAnchor.Text())
+		url, _ := mainAnchor.Attr("href")
+		if url == "" || title == "" || strings.HasPrefix(url, "/r2/") {
+			return // skip ads
 		}
 
-		// Source: publication name from the <cite> anchor inside the headline row
-		citeEl := item.Find("table.shrtbl cite, cite").First()
-		source := strings.TrimSpace(citeEl.Find("a").First().Text())
+		// Source: last <a> in the <cite> of the headline's shrtbl
+		citeEl := mainItem.Find("table.shrtbl cite").First()
+		source := strings.TrimSpace(citeEl.Find("a").Last().Text())
 		if source == "" {
-			// Fall back to full cite text, strip author prefix (e.g. "Author / Pub:")
-			raw := strings.TrimSpace(citeEl.Text())
+			raw := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(citeEl.Text()), ":"))
 			if idx := strings.LastIndex(raw, "/"); idx != -1 {
 				source = strings.TrimSpace(raw[idx+1:])
 			} else {
-				source = strings.TrimSuffix(strings.TrimSpace(raw), ":")
+				source = raw
 			}
 		}
 
-		h := Headline{
-			Title:  title,
-			URL:    url,
-			Source: source,
-		}
+		h := Headline{Title: title, URL: url, Source: source}
 
-		// Discussion items: each div.di in the cluster is a related article.
-		// Structure: <div class="di"><cite>Author / <a>Pub</a>:</cite> <a href="...">Title</a></div>
-		cluster.Find("div.di").Each(func(_ int, di *goquery.Selection) {
-			// The last <a> is the article link; the cite's <a> is the publication.
+		// Discussions: div.di items inside the main item's hidden expanded block.
+		// Structure: div#Np1 > div.di > cite + a (title/url)
+		// goquery can find hidden elements; display:none doesn't matter.
+		mainItem.Find("div.di").Each(func(_ int, di *goquery.Selection) {
 			anchors := di.Find("a")
 			if anchors.Length() == 0 {
 				return
 			}
+			// Last <a> is the article link; cite's <a> is the publication.
 			articleAnchor := anchors.Last()
 			dTitle := strings.TrimSpace(articleAnchor.Text())
 			dURL, _ := articleAnchor.Attr("href")
+			if dTitle == "" || dURL == "" {
+				return
+			}
 
 			diCite := di.Find("cite")
-			dSource := strings.TrimSpace(diCite.Find("a").First().Text())
+			dSource := strings.TrimSpace(diCite.Find("a").Last().Text())
 			if dSource == "" {
-				raw := strings.TrimSpace(diCite.Text())
+				raw := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(diCite.Text()), ":"))
 				if idx := strings.LastIndex(raw, "/"); idx != -1 {
 					dSource = strings.TrimSpace(raw[idx+1:])
 				}
 			}
 
-			if dTitle != "" && dURL != "" {
-				h.Discussion = append(h.Discussion, Discussion{
-					Title:  dTitle,
-					URL:    dURL,
-					Source: dSource,
-				})
-			}
+			h.Discussion = append(h.Discussion, Discussion{
+				Title:  dTitle,
+				URL:    dURL,
+				Source: dSource,
+			})
 		})
 
 		feed.Headlines = append(feed.Headlines, h)
