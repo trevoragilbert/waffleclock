@@ -266,7 +266,7 @@ func (m model) viewList() string {
 		meta = truncate(meta, m.width-2)
 
 		if i == m.cursor {
-			b.WriteString(styleSelected.Render(" ▸ "+title) + "\n")
+			b.WriteString(styleSelected.Render(" > "+title) + "\n")
 			b.WriteString(styleSelected.Render(meta) + "\n")
 		} else {
 			b.WriteString("   " + title + "\n")
@@ -320,7 +320,7 @@ func (m model) viewDetail() string {
 		for _, d := range h.Discussion {
 			title := truncate(d.Title, m.width-4)
 			if idx == m.detailCursor {
-				b.WriteString(styleSelected.Render(" ▸ "+title) + "\n")
+				b.WriteString(styleSelected.Render(" > "+title) + "\n")
 				if d.Source != "" {
 					b.WriteString(styleSelected.Render("   "+d.Source) + "\n")
 				}
@@ -349,7 +349,7 @@ func (m model) viewDetail() string {
 			}
 			src := c.Source
 			if idx == m.detailCursor {
-				b.WriteString(styleSelected.Render(" ▸ "+text) + "\n")
+				b.WriteString(styleSelected.Render(" > "+text) + "\n")
 				if src != "" {
 					b.WriteString(styleSelected.Render("   "+src) + "\n")
 				}

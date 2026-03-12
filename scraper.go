@@ -32,63 +32,71 @@ func fetchFeed() (Feed, error) {
 
 	var feed Feed
 
-	doc.Find("div.item").Each(func(_ int, s *goquery.Selection) {
-		anchor := s.Find("a.ourh").First()
+	// Each story cluster lives inside a div.itc2. Within it:
+	//   div.item        — the main headline row
+	//   div.di          — individual discussion/related-article items
+	doc.Find("div.itc2").Each(func(_ int, cluster *goquery.Selection) {
+		item := cluster.Find("div.item").First()
+		if item.Length() == 0 {
+			return
+		}
+
+		anchor := item.Find("strong.L1 a.ourh, a.ourh").First()
 		if anchor.Length() == 0 {
 			return
 		}
 
 		title := strings.TrimSpace(anchor.Text())
 		url, _ := anchor.Attr("href")
-		source := strings.TrimSpace(s.Find("cite").First().Text())
-		if source == "" {
-			source = strings.TrimSpace(s.Find("span.src").First().Text())
-		}
-		timeStr := strings.TrimSpace(s.Find("span.time").First().Text())
-
 		if url == "" || title == "" {
 			return
+		}
+
+		// Source: publication name from the <cite> anchor inside the headline row
+		citeEl := item.Find("table.shrtbl cite, cite").First()
+		source := strings.TrimSpace(citeEl.Find("a").First().Text())
+		if source == "" {
+			// Fall back to full cite text, strip author prefix (e.g. "Author / Pub:")
+			raw := strings.TrimSpace(citeEl.Text())
+			if idx := strings.LastIndex(raw, "/"); idx != -1 {
+				source = strings.TrimSpace(raw[idx+1:])
+			} else {
+				source = strings.TrimSuffix(strings.TrimSpace(raw), ":")
+			}
 		}
 
 		h := Headline{
 			Title:  title,
 			URL:    url,
 			Source: source,
-			Time:   timeStr,
 		}
 
-		// Discussion links
-		s.Find("div.ii a, a.ii").Each(func(_ int, a *goquery.Selection) {
-			dTitle := strings.TrimSpace(a.Text())
-			dURL, _ := a.Attr("href")
-			dSource := strings.TrimSpace(a.Find("cite").Text())
-			if dSource == "" {
-				dSource = strings.TrimSpace(a.Find("span.src").Text())
+		// Discussion items: each div.di in the cluster is a related article.
+		// Structure: <div class="di"><cite>Author / <a>Pub</a>:</cite> <a href="...">Title</a></div>
+		cluster.Find("div.di").Each(func(_ int, di *goquery.Selection) {
+			// The last <a> is the article link; the cite's <a> is the publication.
+			anchors := di.Find("a")
+			if anchors.Length() == 0 {
+				return
 			}
+			articleAnchor := anchors.Last()
+			dTitle := strings.TrimSpace(articleAnchor.Text())
+			dURL, _ := articleAnchor.Attr("href")
+
+			diCite := di.Find("cite")
+			dSource := strings.TrimSpace(diCite.Find("a").First().Text())
+			if dSource == "" {
+				raw := strings.TrimSpace(diCite.Text())
+				if idx := strings.LastIndex(raw, "/"); idx != -1 {
+					dSource = strings.TrimSpace(raw[idx+1:])
+				}
+			}
+
 			if dTitle != "" && dURL != "" {
 				h.Discussion = append(h.Discussion, Discussion{
 					Title:  dTitle,
 					URL:    dURL,
 					Source: dSource,
-				})
-			}
-		})
-
-		// Commentary
-		s.Find(".cmtt").Each(func(_ int, c *goquery.Selection) {
-			author := strings.TrimSpace(c.Find(".cmttauthor").Text())
-			text := strings.TrimSpace(c.Find(".cmttxt").Text())
-			cURL, _ := c.Find("a").First().Attr("href")
-			cSource := strings.TrimSpace(c.Find("cite").Text())
-			if cSource == "" {
-				cSource = strings.TrimSpace(c.Find("span.src").Text())
-			}
-			if author != "" || text != "" {
-				h.Commentary = append(h.Commentary, Commentary{
-					Author: author,
-					Text:   text,
-					URL:    cURL,
-					Source: cSource,
 				})
 			}
 		})
