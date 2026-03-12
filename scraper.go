@@ -72,17 +72,20 @@ func fetchFeed() (Feed, error) {
 		// Discussions: div.di items inside the main item's hidden expanded block.
 		// Structure: div#Np1 > div.di > cite + a (title/url)
 		// goquery can find hidden elements; display:none doesn't matter.
-		mainItem.Find("div.di").Each(func(_ int, di *goquery.Selection) {
+		mainItem.Find("div.di").EachWithBreak(func(_ int, di *goquery.Selection) bool {
+			if len(h.Discussion) >= 3 {
+				return false
+			}
 			anchors := di.Find("a")
 			if anchors.Length() == 0 {
-				return
+				return true
 			}
 			// Last <a> is the article link; cite's <a> is the publication.
 			articleAnchor := anchors.Last()
 			dTitle := strings.TrimSpace(articleAnchor.Text())
 			dURL, _ := articleAnchor.Attr("href")
 			if dTitle == "" || dURL == "" {
-				return
+				return true
 			}
 
 			diCite := di.Find("cite")
@@ -99,6 +102,7 @@ func fetchFeed() (Feed, error) {
 				URL:    dURL,
 				Source: dSource,
 			})
+			return true
 		})
 
 		feed.Headlines = append(feed.Headlines, h)
