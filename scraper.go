@@ -100,9 +100,6 @@ func fetchFeed() (Feed, error) {
 						Source: dSource,
 					})
 				} else {
-					if len(h.Commentary) >= 3 {
-						return false
-					}
 					author := dSource
 					h.Commentary = append(h.Commentary, Commentary{
 						Author: author,
