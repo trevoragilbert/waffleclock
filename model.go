@@ -261,7 +261,7 @@ func (m model) viewList() string {
 		disc := len(h.Discussion)
 		comm := len(h.Commentary)
 
-		title := truncate(h.Title, m.width-4)
+		titleLines := wordWrap(h.Title, 16)
 		meta := fmt.Sprintf("  %s · %d discussions · %d commentary", h.Source, disc, comm)
 		if h.Time != "" {
 			meta += "  " + h.Time
@@ -269,10 +269,16 @@ func (m model) viewList() string {
 		meta = truncate(meta, m.width-2)
 
 		if i == m.cursor {
-			b.WriteString("> " + styleBold.Render(title) + "\n")
+			b.WriteString("> " + styleBold.Render(titleLines[0]) + "\n")
+			for _, l := range titleLines[1:] {
+				b.WriteString("  " + styleBold.Render(l) + "\n")
+			}
 			b.WriteString("  " + styleDim.Render(meta) + "\n")
 		} else {
-			b.WriteString("  " + title + "\n")
+			b.WriteString("  " + titleLines[0] + "\n")
+			for _, l := range titleLines[1:] {
+				b.WriteString("  " + l + "\n")
+			}
 			b.WriteString("  " + styleDim.Render(meta) + "\n")
 		}
 		b.WriteString("\n")
@@ -330,14 +336,20 @@ func (m model) viewDetail() string {
 	if len(h.Discussion) > 0 {
 		b.WriteString(" " + styleSectionHd.Render("Discussion:") + "\n")
 		for _, d := range h.Discussion {
-			title := truncate(d.Title, m.width-4)
+			lines := wordWrap(d.Title, 16)
 			if idx == m.detailCursor {
-				b.WriteString("> " + styleBold.Render(title) + "\n")
+				b.WriteString("> " + styleBold.Render(lines[0]) + "\n")
+				for _, l := range lines[1:] {
+					b.WriteString("  " + styleBold.Render(l) + "\n")
+				}
 				if d.Source != "" {
 					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
 				}
 			} else {
-				b.WriteString("  " + title + "\n")
+				b.WriteString("  " + lines[0] + "\n")
+				for _, l := range lines[1:] {
+					b.WriteString("  " + l + "\n")
+				}
 				if d.Source != "" {
 					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
 				}
@@ -351,22 +363,29 @@ func (m model) viewDetail() string {
 	if len(h.Commentary) > 0 {
 		b.WriteString(" " + styleSectionHd.Render("Commentary:") + "\n")
 		for _, c := range h.Commentary {
-			text := c.Text
-			if c.Author != "" && text != "" {
-				text = c.Author + `: "` + truncate(text, m.width-6) + `"`
+			var raw string
+			if c.Author != "" && c.Text != "" {
+				raw = c.Author + `: "` + c.Text + `"`
 			} else if c.Author != "" {
-				text = c.Author
+				raw = c.Author
 			} else {
-				text = truncate(text, m.width-4)
+				raw = c.Text
 			}
+			lines := wordWrap(raw, 16)
 			src := c.Source
 			if idx == m.detailCursor {
-				b.WriteString("> " + styleBold.Render(text) + "\n")
+				b.WriteString("> " + styleBold.Render(lines[0]) + "\n")
+				for _, l := range lines[1:] {
+					b.WriteString("  " + styleBold.Render(l) + "\n")
+				}
 				if src != "" {
 					b.WriteString("  " + styleDim.Render(src) + "\n")
 				}
 			} else {
-				b.WriteString("  " + text + "\n")
+				b.WriteString("  " + lines[0] + "\n")
+				for _, l := range lines[1:] {
+					b.WriteString("  " + l + "\n")
+				}
 				if src != "" {
 					b.WriteString("  " + styleDim.Render(src) + "\n")
 				}
@@ -381,6 +400,23 @@ func (m model) viewDetail() string {
 	b.WriteString(footer)
 
 	return b.String()
+}
+
+// wordWrap splits s into lines of at most wordsPerLine words.
+func wordWrap(s string, wordsPerLine int) []string {
+	words := strings.Fields(s)
+	if len(words) == 0 {
+		return []string{""}
+	}
+	var lines []string
+	for i := 0; i < len(words); i += wordsPerLine {
+		end := i + wordsPerLine
+		if end > len(words) {
+			end = len(words)
+		}
+		lines = append(lines, strings.Join(words[i:end], " "))
+	}
+	return lines
 }
 
 func truncate(s string, max int) string {
