@@ -192,7 +192,7 @@ func detailURLs(h Headline) []string {
 
 // adjustListOffset keeps the selected item visible.
 func (m *model) adjustListOffset() {
-	visible := m.visibleListRows()
+	visible := m.visibleItems()
 	if m.cursor < m.listOffset {
 		m.listOffset = m.cursor
 	} else if m.cursor >= m.listOffset+visible {
@@ -200,16 +200,18 @@ func (m *model) adjustListOffset() {
 	}
 }
 
-func (m model) visibleListRows() int {
-	// 3 lines header + 2 lines footer + 1 transient error line
-	reserved := 5
+func (m model) visibleItems() int {
+	// header (2) + footer (1) + transient error (1 if present)
+	reserved := 3
 	if m.transientErr != "" {
 		reserved++
 	}
-	if m.height > reserved {
-		return m.height - reserved
+	rows := m.height - reserved
+	if rows < 3 {
+		return 1
 	}
-	return 1
+	// Each item renders as 3 lines: title, meta, blank
+	return rows / 3
 }
 
 // ── view ──────────────────────────────────────────────────────────────────────
@@ -247,7 +249,7 @@ func (m model) viewList() string {
 	b.WriteString(header + strings.Repeat(" ", gap) + hints + "\n\n")
 
 	// List items
-	visible := m.visibleListRows()
+	visible := m.visibleItems()
 	end := m.listOffset + visible
 	if end > len(m.feed.Headlines) {
 		end = len(m.feed.Headlines)
