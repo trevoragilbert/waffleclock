@@ -47,6 +47,7 @@ type model struct {
 	feed         Feed
 	cursor       int
 	detailCursor int
+	detailOffset int // first visible item index in detail view
 	err          error
 	transientErr string
 	loading      bool
@@ -139,6 +140,7 @@ func (m model) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if n > 0 {
 			m.state = stateDetail
 			m.detailCursor = 0
+			m.detailOffset = 0
 		}
 	case key.Matches(msg, keys.Open):
 		if n > 0 {
@@ -163,10 +165,12 @@ func (m model) updateDetail(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Up):
 		if m.detailCursor > 0 {
 			m.detailCursor--
+			m.adjustDetailOffset(h)
 		}
 	case key.Matches(msg, keys.Down):
 		if m.detailCursor < n-1 {
 			m.detailCursor++
+			m.adjustDetailOffset(h)
 		}
 	case key.Matches(msg, keys.Open), key.Matches(msg, keys.Enter):
 		if n > 0 && items[m.detailCursor] != "" {
@@ -207,6 +211,73 @@ func (m model) availableRows() int {
 		return m.height - reserved
 	}
 	return 1
+}
+
+// detailItemLines returns line counts for each navigable item in the detail view.
+// The first item of each section absorbs the section header line (+1) so that
+// adjustDetailOffset and viewDetail share the same budget.
+// Order: original article, discussions, commentary.
+func detailItemLines(h Headline) []int {
+	lines := []int{1 + 1} // original article line + blank
+	for i, d := range h.Discussion {
+		srcLines := 0
+		if d.Source != "" {
+			srcLines = 1
+		}
+		cost := len(wordWrap(d.Title, 16)) + srcLines + 1 // +1 blank
+		if i == 0 {
+			cost++ // "Discussion:" header
+		}
+		lines = append(lines, cost)
+	}
+	for i, c := range h.Commentary {
+		raw := c.Text
+		if c.Author != "" {
+			raw = c.Author + `: "` + c.Text + `"`
+		}
+		srcLines := 0
+		if c.Source != "" {
+			srcLines = 1
+		}
+		cost := len(wordWrap(raw, 16)) + srcLines + 1 // +1 blank
+		if i == 0 {
+			cost++ // "Commentary:" header
+		}
+		lines = append(lines, cost)
+	}
+	return lines
+}
+
+// adjustDetailOffset keeps the detail cursor visible.
+func (m *model) adjustDetailOffset(h Headline) {
+	if m.detailCursor < m.detailOffset {
+		m.detailOffset = m.detailCursor
+		return
+	}
+	// header (5 lines) + footer (1)
+	available := m.height - 6
+	if available < 1 {
+		available = 1
+	}
+	itemLines := detailItemLines(h)
+	for {
+		used := 0
+		visible := false
+		for i := m.detailOffset; i < len(itemLines); i++ {
+			if used+itemLines[i] > available {
+				break
+			}
+			used += itemLines[i]
+			if i == m.detailCursor {
+				visible = true
+				break
+			}
+		}
+		if visible {
+			break
+		}
+		m.detailOffset++
+	}
 }
 
 // adjustListOffset keeps the selected item visible by advancing or
@@ -343,82 +414,90 @@ func (m model) viewDetail() string {
 	}
 	b.WriteString(" " + styleSource.Render(meta) + "\n\n")
 
-	// Build flat item index for cursor tracking (item 0 = original article)
-	idx := 0
-	{
-		label := "Original article — " + h.Source
+	// Static header = 5 lines (header row + blank + title + source + blank).
+	// Footer = 1 line. available = height - 6.
+	available := m.height - 6
+	if available < 1 {
+		available = 1
+	}
+	usedRows := 0
+
+	// renderItem writes one navigable item if it fits, returns false when full.
+	// sectionHeader is written (and charged) only for the first item (idx==sectionStart).
+	renderItem := func(idx int, textLines []string, source, sectionHeader string) bool {
+		if idx < m.detailOffset {
+			return true // not yet in viewport, skip
+		}
+		srcLines := 0
+		if source != "" {
+			srcLines = 1
+		}
+		hdrLines := 0
+		if sectionHeader != "" {
+			hdrLines = 1
+		}
+		cost := len(textLines) + srcLines + 1 + hdrLines // +1 blank
+		if usedRows+cost > available {
+			return false
+		}
+		usedRows += cost
+		if sectionHeader != "" {
+			b.WriteString(" " + styleSectionHd.Render(sectionHeader) + "\n")
+		}
+		prefix, style := "  ", styleBold
 		if idx == m.detailCursor {
-			b.WriteString("> " + styleBold.Render(truncate(label, m.width-3)) + "\n\n")
+			prefix = "> "
 		} else {
-			b.WriteString("  " + truncate(label, m.width-3) + "\n\n")
+			style = lipgloss.NewStyle()
+		}
+		b.WriteString(prefix + style.Render(textLines[0]) + "\n")
+		for _, l := range textLines[1:] {
+			b.WriteString("  " + style.Render(l) + "\n")
+		}
+		if source != "" {
+			b.WriteString("  " + styleDim.Render(source) + "\n")
+		}
+		b.WriteString("\n")
+		return true
+	}
+
+	idx := 0
+	// Item 0: original article
+	label := "Original article — " + h.Source
+	if !renderItem(idx, []string{label}, "", "") {
+		goto footer
+	}
+	idx++
+
+	// Discussions
+	for i, d := range h.Discussion {
+		hdr := ""
+		if i == 0 {
+			hdr = "Discussion:"
+		}
+		if !renderItem(idx, wordWrap(d.Title, 16), d.Source, hdr) {
+			goto footer
 		}
 		idx++
 	}
 
-	// Discussions
-	if len(h.Discussion) > 0 {
-		b.WriteString(" " + styleSectionHd.Render("Discussion:") + "\n")
-		for _, d := range h.Discussion {
-			lines := wordWrap(d.Title, 16)
-			if idx == m.detailCursor {
-				b.WriteString("> " + styleBold.Render(lines[0]) + "\n")
-				for _, l := range lines[1:] {
-					b.WriteString("  " + styleBold.Render(l) + "\n")
-				}
-				if d.Source != "" {
-					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
-				}
-			} else {
-				b.WriteString("  " + lines[0] + "\n")
-				for _, l := range lines[1:] {
-					b.WriteString("  " + l + "\n")
-				}
-				if d.Source != "" {
-					b.WriteString("  " + styleDim.Render(d.Source) + "\n")
-				}
-			}
-			b.WriteString("\n")
-			idx++
-		}
-	}
-
 	// Commentary
-	if len(h.Commentary) > 0 {
-		b.WriteString(" " + styleSectionHd.Render("Commentary:") + "\n")
-		for _, c := range h.Commentary {
-			var raw string
-			if c.Author != "" && c.Text != "" {
-				raw = c.Author + `: "` + c.Text + `"`
-			} else if c.Author != "" {
-				raw = c.Author
-			} else {
-				raw = c.Text
-			}
-			lines := wordWrap(raw, 16)
-			src := c.Source
-			if idx == m.detailCursor {
-				b.WriteString("> " + styleBold.Render(lines[0]) + "\n")
-				for _, l := range lines[1:] {
-					b.WriteString("  " + styleBold.Render(l) + "\n")
-				}
-				if src != "" {
-					b.WriteString("  " + styleDim.Render(src) + "\n")
-				}
-			} else {
-				b.WriteString("  " + lines[0] + "\n")
-				for _, l := range lines[1:] {
-					b.WriteString("  " + l + "\n")
-				}
-				if src != "" {
-					b.WriteString("  " + styleDim.Render(src) + "\n")
-				}
-			}
-			b.WriteString("\n")
-			idx++
+	for i, c := range h.Commentary {
+		hdr := ""
+		if i == 0 {
+			hdr = "Commentary:"
 		}
+		raw := c.Text
+		if c.Author != "" {
+			raw = c.Author + `: "` + c.Text + `"`
+		}
+		if !renderItem(idx, wordWrap(raw, 16), c.Source, hdr) {
+			goto footer
+		}
+		idx++
 	}
 
-	// Footer
+footer:
 	footer := styleFooter.Render("  ↑↓ navigate · enter/o open link · esc back")
 	b.WriteString(footer)
 
