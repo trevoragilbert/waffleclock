@@ -178,9 +178,10 @@ func (m model) updateDetail(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// detailURLs returns the ordered URL list for the detail view (discussions then commentary).
+// detailURLs returns the ordered URL list for the detail view:
+// main article first, then discussions, then commentary.
 func detailURLs(h Headline) []string {
-	var urls []string
+	urls := []string{h.URL}
 	for _, d := range h.Discussion {
 		urls = append(urls, d.URL)
 	}
@@ -313,8 +314,17 @@ func (m model) viewDetail() string {
 	}
 	b.WriteString(" " + styleSource.Render(meta) + "\n\n")
 
-	// Build flat item index for cursor tracking
+	// Build flat item index for cursor tracking (item 0 = original article)
 	idx := 0
+	{
+		label := "Original article — " + h.Source
+		if idx == m.detailCursor {
+			b.WriteString("> " + styleBold.Render(truncate(label, m.width-3)) + "\n\n")
+		} else {
+			b.WriteString("  " + truncate(label, m.width-3) + "\n\n")
+		}
+		idx++
+	}
 
 	// Discussions
 	if len(h.Discussion) > 0 {
@@ -367,7 +377,7 @@ func (m model) viewDetail() string {
 	}
 
 	// Footer
-	footer := styleFooter.Render("  ↑↓ navigate · enter/o open link · O open headline · esc back")
+	footer := styleFooter.Render("  ↑↓ navigate · enter/o open link · esc back")
 	b.WriteString(footer)
 
 	return b.String()
