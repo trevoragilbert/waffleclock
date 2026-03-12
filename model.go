@@ -191,28 +191,51 @@ func detailURLs(h Headline) []string {
 	return urls
 }
 
-// adjustListOffset keeps the selected item visible.
-func (m *model) adjustListOffset() {
-	visible := m.visibleItems()
-	if m.cursor < m.listOffset {
-		m.listOffset = m.cursor
-	} else if m.cursor >= m.listOffset+visible {
-		m.listOffset = m.cursor - visible + 1
-	}
+// itemLines returns the number of terminal lines an item occupies:
+// wrapped title lines + 1 meta line + 1 blank line.
+func (m model) itemLines(i int) int {
+	return len(wordWrap(m.feed.Headlines[i].Title, 16)) + 2
 }
 
-func (m model) visibleItems() int {
-	// header (2) + footer (1) + transient error (1 if present)
-	reserved := 3
+// availableRows returns the rows usable by list items.
+func (m model) availableRows() int {
+	reserved := 3 // header (2 lines) + footer (1 line)
 	if m.transientErr != "" {
 		reserved++
 	}
-	rows := m.height - reserved
-	if rows < 3 {
-		return 1
+	if m.height > reserved {
+		return m.height - reserved
 	}
-	// Each item renders as 3 lines: title, meta, blank
-	return rows / 3
+	return 1
+}
+
+// adjustListOffset keeps the selected item visible by advancing or
+// retreating listOffset based on actual per-item line counts.
+func (m *model) adjustListOffset() {
+	if m.cursor < m.listOffset {
+		m.listOffset = m.cursor
+		return
+	}
+	available := m.availableRows()
+	for {
+		used := 0
+		visible := false
+		for i := m.listOffset; i < len(m.feed.Headlines); i++ {
+			lines := m.itemLines(i)
+			if used+lines > available {
+				break
+			}
+			used += lines
+			if i == m.cursor {
+				visible = true
+				break
+			}
+		}
+		if visible {
+			break
+		}
+		m.listOffset++
+	}
 }
 
 // ── view ──────────────────────────────────────────────────────────────────────
@@ -249,14 +272,14 @@ func (m model) viewList() string {
 	}
 	b.WriteString(header + strings.Repeat(" ", gap) + hints + "\n\n")
 
-	// List items
-	visible := m.visibleItems()
-	end := m.listOffset + visible
-	if end > len(m.feed.Headlines) {
-		end = len(m.feed.Headlines)
-	}
-
-	for i := m.listOffset; i < end; i++ {
+	// List items — stop when adding the next item would overflow.
+	available := m.availableRows()
+	used := 0
+	for i := m.listOffset; i < len(m.feed.Headlines); i++ {
+		if used+m.itemLines(i) > available {
+			break
+		}
+		used += m.itemLines(i)
 		h := m.feed.Headlines[i]
 		disc := len(h.Discussion)
 		comm := len(h.Commentary)
