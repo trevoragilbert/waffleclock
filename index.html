@@ -494,10 +494,12 @@
           break;
         case PHASES.SIDE2:
           phaseLabel.textContent = 'Side 2';
+          actionBtn.textContent = 'Remove and Heat Iron';
+          actionBtn.classList.remove('hidden');
           break;
         case PHASES.DONE:
           phaseLabel.textContent = 'Done';
-          actionBtn.textContent = 'Next Waffle';
+          actionBtn.textContent = 'Start Waffle';
           actionBtn.classList.remove('hidden');
           break;
         case PHASES.SUMMARY:
@@ -515,6 +517,8 @@
       ensureAudio();
       if (state === PHASES.IDLE || state === PHASES.DONE) {
         setState(PHASES.SIDE1);
+      } else if (state === PHASES.SIDE2) {
+        setState(PHASES.DONE);
       } else if (state === PHASES.SUMMARY) {
         // Reset everything
         waffleCount = 0;
