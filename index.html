@@ -489,7 +489,7 @@
     </div>
   </div>
 
-  <p id="credit">Waffle by Yeong Rong Kim from <a href="https://thenounproject.com/browse/icons/term/waffle/" target="_blank" title="Waffle Icons">Noun Project</a> (CC BY 3.0) &nbsp;·&nbsp; <a href="https://cooking.nytimes.com/recipes/1017409-waffles" target="_blank">My Favorite recipe</a></p>
+  <p id="credit">Created by <a href="https://trevoragilbert.com" target="_blank">@trevoragilbert</a> &nbsp;·&nbsp; Waffle icon by Yeong Rong Kim from <a href="https://thenounproject.com/browse/icons/term/waffle/" target="_blank" title="Waffle Icons">Noun Project</a> (CC BY 3.0) &nbsp;·&nbsp; <a href="https://cooking.nytimes.com/recipes/1017409-waffles" target="_blank">My Favorite recipe</a></p>
 
   <script>
     // ── Constants ────────────────────────────────────────────────────────────
@@ -522,6 +522,7 @@
     const plateArea      = document.getElementById('plate-area');
     const plateWaffles   = document.getElementById('plate-waffles');
     const summaryMsg     = document.getElementById('summary-msg');
+    const waffleIcon     = document.getElementById('waffle-icon');
     const waffleGroup    = document.getElementById('waffle-paths');
     const waffleInner    = document.getElementById('waffle-inner');
     const waffleContainer = document.getElementById('waffle-container');
@@ -623,23 +624,70 @@
       return wrap;
     }
 
-    function addWaffleToPlate() {
+    function placeOnPlate(plateLeft, plateTop, rot) {
       const el = makeMiniWaffle();
-      // Random position within plate circle (plate is 150px, mini is 30px)
-      const angle = Math.random() * 2 * Math.PI;
-      const dist  = Math.sqrt(Math.random()) * 48;
-      const cx = 75 + dist * Math.cos(angle);
-      const cy = 75 + dist * Math.sin(angle);
-      el.style.left = (cx - 15) + 'px';
-      el.style.top  = (cy - 15) + 'px';
-      const rot = (Math.random() * 40 - 20).toFixed(1);
-      el.style.setProperty('--rot', rot + 'deg');
-      if (plateAnimEnabled) el.classList.add('dropping');
-      el.addEventListener('animationend', () => {
-        el.style.transform = `rotate(${rot}deg)`;
-        el.classList.remove('dropping');
-      }, { once: true });
+      el.style.left = plateLeft + 'px';
+      el.style.top  = plateTop  + 'px';
+      el.style.transform = `rotate(${rot}deg)`;
       plateWaffles.appendChild(el);
+    }
+
+    function addWaffleToPlate() {
+      const plateEl    = document.getElementById('plate');
+      const waffleRect = waffleIcon.getBoundingClientRect();
+      const plateRect  = plateEl.getBoundingClientRect();
+      const miniSize   = 30;
+
+      // Random landing position (viewport coords)
+      const angle  = Math.random() * 2 * Math.PI;
+      const dist   = Math.sqrt(Math.random()) * 48;
+      const rot    = (Math.random() * 40 - 20).toFixed(1);
+      const landX  = plateRect.left + plateRect.width  / 2 + dist * Math.cos(angle);
+      const landY  = plateRect.top  + plateRect.height / 2 + dist * Math.sin(angle);
+
+      // Position within #plate-waffles (plate-relative)
+      const plateLeft = landX - plateRect.left - miniSize / 2;
+      const plateTop  = landY - plateRect.top  - miniSize / 2;
+
+      if (!plateAnimEnabled) {
+        placeOnPlate(plateLeft, plateTop, rot);
+        return;
+      }
+
+      // Clone the live waffle icon (preserves current cooked fill color)
+      const svgClone = waffleIcon.cloneNode(true);
+      svgClone.removeAttribute('id');
+      svgClone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      svgClone.style.cssText = 'width:100%;height:100%;display:block;';
+
+      const clone = document.createElement('div');
+      clone.style.cssText = `
+        position: fixed;
+        left: ${waffleRect.left}px;
+        top: ${waffleRect.top}px;
+        width: ${waffleRect.width}px;
+        height: ${waffleRect.height}px;
+        pointer-events: none;
+        z-index: 50;
+        transform-origin: top left;
+        transition: transform 600ms cubic-bezier(0.4, 0, 0.2, 1);
+      `;
+      clone.appendChild(svgClone);
+      document.body.appendChild(clone);
+
+      const scale = miniSize / waffleRect.width;
+      const tx    = landX - miniSize / 2 - waffleRect.left;
+      const ty    = landY - miniSize / 2 - waffleRect.top;
+
+      // Two rAF frames to ensure initial style is painted before transition starts
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        clone.style.transform = `translate(${tx}px, ${ty}px) scale(${scale}) rotate(${rot}deg)`;
+      }));
+
+      clone.addEventListener('transitionend', () => {
+        clone.remove();
+        placeOnPlate(plateLeft, plateTop, rot);
+      }, { once: true });
     }
 
     function updateCountLabel() {
