@@ -29,13 +29,9 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      transition: background-color 0.4s ease;
       padding: 1.5rem 1rem;
       gap: 2rem;
     }
-
-    body.phase-side1 { background-color: #FFF3E0; }
-    body.phase-side2 { background-color: #FFE0B2; }
 
     /* ── Header ── */
     #header {
@@ -181,13 +177,18 @@
     <div id="waffle-container">
       <div id="waffle-inner">
         <svg id="waffle-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect id="waffle-fill" x="5" y="5" width="90" height="90" rx="8" fill="#F5E6C8"/>
-          <line x1="5"  y1="28" x2="95" y2="28" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
-          <line x1="5"  y1="50" x2="95" y2="50" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
-          <line x1="5"  y1="72" x2="95" y2="72" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
-          <line x1="28" y1="5"  x2="28" y2="95" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
-          <line x1="50" y1="5"  x2="50" y2="95" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
-          <line x1="72" y1="5"  x2="72" y2="95" stroke="#3E2723" stroke-width="2" opacity="0.25"/>
+          <!-- Grooves: fixed dark base -->
+          <rect x="0" y="0" width="100" height="100" rx="6" fill="#3A1A00"/>
+          <!-- 4 big raised cells — fill animated by JS -->
+          <rect class="waffle-cell" x="4"  y="4"  width="43" height="43" fill="#F5E6C8"/>
+          <rect class="waffle-cell" x="53" y="4"  width="43" height="43" fill="#F5E6C8"/>
+          <rect class="waffle-cell" x="4"  y="53" width="43" height="43" fill="#F5E6C8"/>
+          <rect class="waffle-cell" x="53" y="53" width="43" height="43" fill="#F5E6C8"/>
+          <!-- Inner raised bumps — white highlight overlay -->
+          <rect x="12" y="12" width="27" height="27" fill="white" opacity="0.18"/>
+          <rect x="61" y="12" width="27" height="27" fill="white" opacity="0.18"/>
+          <rect x="12" y="61" width="27" height="27" fill="white" opacity="0.18"/>
+          <rect x="61" y="61" width="27" height="27" fill="white" opacity="0.18"/>
         </svg>
       </div>
     </div>
@@ -228,7 +229,7 @@
     const actionBtn   = document.getElementById('action-btn');
     const flipBtn     = document.getElementById('flip-btn');
     const countEl     = document.getElementById('waffle-count');
-    const waffleFill  = document.getElementById('waffle-fill');
+    const waffleCells = document.querySelectorAll('.waffle-cell');
     const waffleInner = document.getElementById('waffle-inner');
 
     // ── Audio ─────────────────────────────────────────────────────────────────
@@ -314,7 +315,8 @@
       const r = lerpChannel(COLOR_START.r, COLOR_END.r, t);
       const g = lerpChannel(COLOR_START.g, COLOR_END.g, t);
       const b = lerpChannel(COLOR_START.b, COLOR_END.b, t);
-      waffleFill.setAttribute('fill', `rgb(${r},${g},${b})`);
+      const color = `rgb(${r},${g},${b})`;
+      waffleCells.forEach(el => el.setAttribute('fill', color));
     }
 
     // ── Flip animation (waffle only) ──────────────────────────────────────────
@@ -334,7 +336,7 @@
 
       if (newPhase === PHASES.SIDE1) {
         cookStartTime = performance.now();
-        waffleFill.setAttribute('fill', '#F5E6C8');
+        waffleCells.forEach(el => el.setAttribute('fill', '#F5E6C8'));
         startTimer(SIDE1_MS);
       } else if (newPhase === PHASES.DONE) {
         stopTimer();
@@ -354,26 +356,21 @@
         case PHASES.IDLE:
           phaseLabel.textContent = 'Ready';
           timerDisp.textContent = '1:00';
-          body.className = '';
           actionBtn.textContent = 'Start';
           actionBtn.classList.remove('hidden');
           break;
         case PHASES.SIDE1:
           phaseLabel.textContent = 'Side 1';
-          body.className = 'phase-side1';
           break;
         case PHASES.WAIT_FLIP:
           phaseLabel.textContent = 'Flip it!';
-          body.className = 'phase-side1';
           flipBtn.classList.remove('hidden');
           break;
         case PHASES.SIDE2:
           phaseLabel.textContent = 'Side 2';
-          body.className = 'phase-side2';
           break;
         case PHASES.DONE:
           phaseLabel.textContent = 'Done';
-          body.className = '';
           actionBtn.textContent = 'Next Waffle';
           actionBtn.classList.remove('hidden');
           break;
@@ -400,7 +397,6 @@
         },
         () => {
           state = PHASES.SIDE2;
-          body.className = 'phase-side2';
           startTimer(SIDE2_MS);
         }
       );
