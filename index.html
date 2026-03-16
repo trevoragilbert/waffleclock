@@ -668,6 +668,7 @@
           break;
         case PHASES.SIDE1:
           phaseLabel.textContent = 'Side 1';
+          flipBtn.classList.remove('hidden');
           break;
         case PHASES.WAIT_FLIP:
           phaseLabel.textContent = 'Flip it!';
@@ -712,7 +713,8 @@
 
     flipBtn.addEventListener('click', () => {
       ensureAudio();
-      if (state !== PHASES.WAIT_FLIP) return;
+      if (state !== PHASES.WAIT_FLIP && state !== PHASES.SIDE1) return;
+      stopTimer();
       playSubtleBeep();
       doFlipAnimation(
         () => {
