@@ -421,7 +421,7 @@
 
   <div id="header">
     <h1>WaffleClock</h1>
-    <p>Tap Start, flip when it beeps, and collect perfect waffles every time.</p>
+    <p>Tap Start, flip when it beeps, and collect perfect waffles every time. Inspired by <a href="https://cooking.nytimes.com/recipes/1017409-waffles" target="_blank">my favorite waffle recipe</a> that calls for a 1 minute, 3 minute, and reheat timing cycle.</p>
   </div>
 
   <div id="app">
@@ -496,7 +496,6 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.14,12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4,2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24,0-.43.17-.47.41L9.25,5.35c-.59.24-1.13.56-1.62.94L5.24,5.33c-.22-.08-.47,0-.59.22L2.74,8.87c-.12.21-.08.47.12.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s.02.64.07.94L2.84,14.52c-.18.14-.23.41-.12.61l1.92,3.32c.12.22.37.29.59.22l2.39-.96c.5.38,1.03.7,1.62.94l.36,2.54c.05.24.24.41.48.41h3.84c.24,0,.44-.17.47-.41l.36-2.54c.59-.24,1.13-.56,1.62-.94l2.39.96c.22.08.47,0,.59-.22l1.92-3.32c.12-.22.07-.47-.12-.61ZM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6,3.6,1.62,3.6,3.6-1.62,3.6-3.6,3.6Z"/></svg>
       </button>
     </div>
-    <p class="footer-line"><a href="https://cooking.nytimes.com/recipes/1017409-waffles" target="_blank">My Favorite Waffle Recipe</a></p>
     <p class="footer-line">Waffle icon by Yeong Rong Kim from <a href="https://thenounproject.com/browse/icons/term/waffle/" target="_blank" title="Waffle Icons">Noun Project</a> (CC BY 3.0)</p>
     <p class="footer-line">Created by <a href="https://trevoragilbert.com" target="_blank">@trevoragilbert</a></p>
   </footer>
@@ -558,8 +557,8 @@
       osc.stop(audioCtx.currentTime + delay + duration + 0.05);
     }
 
-    function playSubtleBeep() { ensureAudio(); playBeep(440, 0.2, 0.3); }
-    function playLoudBeep()   { ensureAudio(); playBeep(600, 0.4, 0.7, 0); playBeep(600, 0.4, 0.7, 0.55); }
+    function playSubtleBeep() { ensureAudio(); playBeep(440, 0.25, 0.25, 0); playBeep(440, 0.25, 0.25, 0.35); }
+    function playLoudBeep()   { ensureAudio(); playBeep(600, 0.5, 0.7, 0); playBeep(600, 0.25, 0.3, 0.85); playBeep(600, 0.25, 0.3, 1.2); }
 
     // ── Timer ─────────────────────────────────────────────────────────────────
     function formatTime(ms) {
@@ -580,6 +579,7 @@
       if (remaining <= 0) {
         if (state === PHASES.SIDE1) {
           timerDisp.textContent = '0:00';
+          playSubtleBeep();
           setState(PHASES.WAIT_FLIP);
         } else if (state === PHASES.SIDE2) {
           setState(PHASES.DONE);
@@ -796,7 +796,7 @@
       ensureAudio();
       if (state !== PHASES.WAIT_FLIP && state !== PHASES.SIDE1) return;
       stopTimer();
-      playSubtleBeep();
+      if (state === PHASES.SIDE1) playSubtleBeep();
       doFlipAnimation(
         () => {
           phaseLabel.textContent = 'Side 2';
@@ -814,7 +814,7 @@
       setState(PHASES.SUMMARY);
     });
 
-    // ── Settings ─────────────────────────────────────────────────────────────
+    // ── Ts ─────────────────────────────────────────────────────────────
     const toolbar         = document.getElementById('toolbar');
     const settingsBtn     = document.getElementById('settings-btn');
     const resetBtn        = document.getElementById('reset-btn');
