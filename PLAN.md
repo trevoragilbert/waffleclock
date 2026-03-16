@@ -1,167 +1,85 @@
-# waffleflip — Build Plan
+# WaffleClock — Remaining Tasks
 
-## Overview
+## 19c. DNS — add CNAME record in Cloudflare *(manual)*
 
-Single `index.html` file. No build step, no dependencies. Tasks are ordered by dependency — work top to bottom.
-
----
-
-## 1. HTML Skeleton
-
-- [ ] Create `index.html` with `<!DOCTYPE html>`, `<head>`, `<body>`
-- [ ] Add `<meta charset>`, `<meta name="viewport" content="width=device-width, initial-scale=1">`
-- [ ] Link Google Fonts: Lexend and Space Mono via `<link>`
-- [ ] Add structural elements:
-  - `#phase-label` — phase name text
-  - `#timer-display` — large countdown digits
-  - `#action-btn` — primary action button
-  - `#waffle-count` — counter display
-  - `#waffle-icon` — SVG placeholder
+- [ ] In Cloudflare for `trevoragilbert.com`, add a CNAME record for the `waffles` subdomain only — do not touch the apex or `www` records:
+  - **Name**: `waffles`
+  - **Target**: `trevoragilbert.github.io`
+  - **Proxy status**: set to **DNS only** (gray cloud, not orange) — Cloudflare proxying conflicts with GitHub Pages SSL cert provisioning
+- [ ] Confirm the site loads at `https://waffles.trevoragilbert.com` once GitHub verifies the domain
 
 ---
 
-## 2. Waffle SVG Icon
+## 20. Visual Plate Counter
 
-- [ ] Draw inline SVG representing a waffle (grid/circle shape)
-- [ ] Set initial fill to pale batter color (`#F5E6C8`)
-- [ ] Make fill programmable (JS will update it via `setAttribute` or CSS variable)
-- [ ] Position icon above phase label
+Replace the plain text waffle count with an illustrated plate that accumulates mini waffle icons.
 
----
+### 20a. Plate element
 
-## 3. Base CSS
+- [ ] Replace `#waffle-count` with a `#plate-area` containing:
+  - `#plate` — CSS ellipse representing a plate (white/cream fill, subtle warm-gray border)
+  - `#plate-waffles` — absolutely-positioned container inside `#plate` where mini waffle icons are appended
+- [ ] Plate is always visible; starts empty
 
-- [ ] Set background color: `#FFF8F0`
-- [ ] Set text color: `#3E2723`
-- [ ] Apply Lexend to all UI text, Space Mono to `#timer-display`
-- [ ] Vertical centering: flex column, `min-height: 100dvh`, `justify-content: center`, `align-items: center`
-- [ ] Timer font size: `clamp(4rem, 20vw, 8rem)` or similar
-- [ ] Button style: solid rectangle, no border-radius, no border, no shadow. Minimum height 48px, minimum width 160px. Background: `#F59E0B`, text: dark
-- [ ] Phase label: uppercase, Lexend, medium size
-- [ ] Waffle count: small, bottom of layout, always visible
-- [ ] Responsive: works at 320px viewport width
+### 20b. Mini waffle icon
 
----
+- [ ] Define the waffle SVG as a reusable JS function that returns an SVG element
+- [ ] Mini waffle size: ~28–36px, same Noun Project SVG paths, fixed golden-brown fill (`#E4BC80`)
+- [ ] Each mini waffle is a `<div class="mini-waffle">` wrapping the SVG, positioned absolutely within `#plate-waffles`
 
-## 4. Phase Background Colors
+### 20c. Placement logic
 
-- [ ] Define CSS custom properties or classes for per-phase background tints:
-  - IDLE / DONE: `#FFF8F0` (base)
-  - SIDE 1: slightly warm tint (e.g. `#FFF3E0`)
-  - SIDE 2: slightly deeper warm tint (e.g. `#FFE0B2`)
-- [ ] JS applies the correct class/variable when phase changes
+- [ ] On each DONE transition, call `addWaffleToPlate()`:
+  - Random position within the plate bounds (constrained so icon doesn't overflow the plate edge)
+  - Random rotation: `-20deg` to `+20deg`
+  - Append new mini waffle to `#plate-waffles`
+- [ ] Waffles stack naturally via DOM order — no collision detection needed
 
----
+### 20d. Drop animation
 
-## 5. State Machine (JS)
+- [ ] Mini waffle enters with a short "plop" animation:
+  - Starts slightly above final position, `scale(0.6)`, `opacity: 0`
+  - Animates to final position, `scale(1)`, `opacity: 1` over ~300ms ease-out
+  - CSS `@keyframes waffleDrop`
 
-- [ ] Define phase constants: `IDLE`, `SIDE1`, `SIDE2`, `DONE`
-- [ ] Single `state` variable tracking current phase
-- [ ] `setState(phase)` function that:
-  - Updates `state`
-  - Calls render functions
-  - Starts/stops timer as needed
-- [ ] Initial state: `IDLE`
+### 20e. Numeric label
+
+- [ ] Small `#waffle-count-label` below the plate showing `"N waffles"` — small, muted, Lexend
 
 ---
 
-## 6. Timer Logic
+## 21. "Stop Waffling Around" — Session End & Summary
 
-- [ ] `startTimer(durationMs)` — records `startTime = performance.now()`, sets `endTime = startTime + durationMs`
-- [ ] `requestAnimationFrame` loop that:
-  - Computes `remaining = endTime - performance.now()`
-  - Formats as `M:SS` and writes to `#timer-display`
-  - If `remaining <= 0`, stops loop and triggers phase transition
-- [ ] `stopTimer()` — cancels the animation frame
-- [ ] No drift — always diff against wall clock, never accumulate ticks
-- [ ] Display `1:00` on entering SIDE 1, `3:00` on entering SIDE 2, `0:00` on DONE
+### 21a. Stop button
 
----
+- [ ] Add `#stop-btn` — small, muted text/ghost button, visible after first "Start" tap, hidden in IDLE
+- [ ] Label: **"Stop Waffling Around"**
 
-## 7. Waffle Counter
+### 21b. SUMMARY state
 
-- [ ] Initialize `waffleCount = 0`
-- [ ] Increment when state transitions to DONE
-- [ ] Update `#waffle-count` text on every change
-- [ ] Display format: e.g. `Waffles: 3` or `3 waffles`
+- [ ] Add `SUMMARY` phase — tapping stop at any active phase cancels timer and transitions here
+- [ ] Summary screen shows:
+  - Total waffle count large (Space Mono)
+  - Singular/plural label
+  - The filled plate as a recap visual
+  - **"Start Over"** button — resets count to 0, clears plate, returns to IDLE
 
----
+### 21c. Edge case — zero waffles
 
-## 8. Button Behavior
-
-- [ ] IDLE: show "Start" button → clicking transitions to SIDE 1
-- [ ] SIDE 1 / SIDE 2: hide button (no pause/resume)
-- [ ] DONE: show "Next Waffle" button → clicking transitions to SIDE 1
+- [ ] If stopped before any waffle completes, show `"No waffles yet."` and skip the plate visual
 
 ---
 
-## 9. Audio (Web Audio API)
+## 22. Footer Credits & Links
 
-- [ ] Create `AudioContext` lazily on first user gesture (to satisfy mobile autoplay policy)
-- [ ] `playSubtleBeep()`:
-  - `OscillatorNode` at ~440Hz
-  - Duration: ~200ms
-  - Gain: low-medium (e.g. 0.3)
-- [ ] `playLoudBeep()`:
-  - `OscillatorNode` at ~600Hz
-  - Duration: ~400ms, played twice with ~150ms gap between
-  - Gain: noticeably louder (e.g. 0.7)
-- [ ] Call `playSubtleBeep()` on SIDE 1 → SIDE 2 transition
-- [ ] Call `playLoudBeep()` on SIDE 2 → DONE transition
+- [ ] Add favorite waffle recipe link next to Noun Project credit, separated by ` · `
+- [ ] Link: "Favorite recipe" → `https://cooking.nytimes.com/recipes/1017409-waffles`, opens in new tab
+- [ ] Both links inherit the muted `#credit` style (no bright blue, no underline unless hovered)
 
 ---
 
-## 10. Flip Animation (CSS + JS)
+## 23. Final File
 
-- [ ] Add CSS `@keyframes flipTimer`:
-  - `0%`: `rotateX(0deg)`
-  - `100%`: `rotateX(180deg)`
-  - Duration: 600ms, ease-in-out
-- [ ] Set `perspective` on parent container
-- [ ] Apply `backface-visibility: hidden` to timer element
-- [ ] JS: when SIDE 1 ends:
-  1. Add `.flipping` class to trigger CSS animation
-  2. At 300ms midpoint (90°), swap displayed time to `3:00` and update phase label to "FLIP — SIDE 2"
-  3. Listen for `animationend`, remove `.flipping` class
-- [ ] Waffle SVG participates in the flip (is inside the animated container)
-
----
-
-## 11. Waffle Icon Color Progression
-
-- [ ] Define start color: `#F5E6C8` (pale batter), end color: `#C68A2E` (golden brown)
-- [ ] Total cook duration: 240,000ms (1min SIDE 1 + 3min SIDE 2)
-- [ ] Each animation frame, compute `elapsed` across both phases:
-  - During SIDE 1: `elapsed = performance.now() - side1StartTime`
-  - During SIDE 2: `elapsed = 60000 + (performance.now() - side2StartTime)`
-- [ ] Interpolate RGB values linearly: `color = lerp(startColor, endColor, elapsed / 240000)`
-- [ ] Write interpolated color to SVG fill each frame
-- [ ] Reset to `#F5E6C8` when entering SIDE 1 (new waffle)
-
----
-
-## 12. Render Function
-
-- [ ] `render()` called by `setState()` — updates DOM to match current state:
-  - Phase label text
-  - Button visibility and label
-  - Background tint class
-  - Timer display (static value when not running)
-
----
-
-## 13. Polish & Edge Cases
-
-- [ ] Ensure AudioContext is resumed after user gesture (call `audioCtx.resume()` in button click handlers)
-- [ ] Verify timer displays correct static value in IDLE (`--:--` or blank) and DONE (`0:00`)
-- [ ] Test that rapid tapping "Next Waffle" doesn't corrupt state (cancel any in-progress animation/timer before starting new one)
-- [ ] Verify flip animation doesn't show backwards text at midpoint
-- [ ] Test on mobile: tap targets, font scaling, no content overflow at 320px
-
----
-
-## 14. Final File
-
-- [ ] Validate HTML (no unclosed tags, valid structure)
+- [ ] Validate HTML (no unclosed tags)
 - [ ] Remove any debug `console.log` statements
-- [ ] Confirm single `index.html` contains all HTML, CSS, and JS — no external files except Google Fonts CDN
+- [ ] Confirm single `index.html` — no external files except Google Fonts CDN
