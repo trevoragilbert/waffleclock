@@ -604,7 +604,8 @@
           playSubtleBeep();
           setState(PHASES.WAIT_FLIP);
         } else if (state === PHASES.SIDE2) {
-          setState(PHASES.DONE);
+          timerDisp.textContent = '0:00';
+          playLoudBeep();
         }
         return;
       }
@@ -737,11 +738,6 @@
         startTimer(side1Ms);
       } else if (newPhase === PHASES.DONE) {
         stopTimer();
-        playLoudBeep();
-        waffleCount++;
-        updateCountLabel();
-        addWaffleToPlate();
-        timerDisp.textContent = '0:00';
       } else if (newPhase === PHASES.SUMMARY) {
         stopTimer();
       }
@@ -751,8 +747,6 @@
       actionBtn.classList.add('hidden');
       flipBtn.classList.add('hidden');
 
-      const isRunning = state === PHASES.SIDE1 || state === PHASES.SIDE2;
-      toolbar.classList.toggle('hidden', isRunning);
       const inSession = state !== PHASES.IDLE && state !== PHASES.SUMMARY;
       stopBtn.classList.toggle('hidden', !inSession);
 
@@ -803,6 +797,10 @@
       if (state === PHASES.IDLE || state === PHASES.DONE) {
         setState(PHASES.SIDE1);
       } else if (state === PHASES.SIDE2) {
+        stopTimer();
+        waffleCount++;
+        updateCountLabel();
+        addWaffleToPlate();
         setState(PHASES.DONE);
       } else if (state === PHASES.SUMMARY) {
         // Reset everything
@@ -827,6 +825,7 @@
         () => {
           state = PHASES.SIDE2;
           startTimer(side2Ms);
+          render();
         }
       );
     });
