@@ -247,6 +247,138 @@
 
     #stop-btn.hidden { display: none; }
 
+    /* ── Settings button ── */
+    #settings-btn {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      opacity: 0.4;
+      color: var(--text);
+      line-height: 0;
+    }
+
+    #settings-btn:hover { opacity: 0.7; }
+
+    /* ── Settings modal ── */
+    #settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(62, 39, 35, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    #settings-overlay.hidden { display: none; }
+
+    #settings-modal {
+      background: var(--bg);
+      padding: 2rem;
+      width: min(90vw, 320px);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    #settings-modal h2 {
+      font-family: 'Lexend', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    #settings-close {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.4rem;
+      line-height: 1;
+      color: var(--text);
+      opacity: 0.5;
+      padding: 0.25rem;
+    }
+
+    #settings-close:hover { opacity: 1; }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .setting-row label {
+      font-family: 'Lexend', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+    }
+
+    .time-inputs {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+    }
+
+    .time-inputs input {
+      width: 3rem;
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      background: none;
+      border: 1px solid #D4BFA0;
+      color: var(--text);
+      padding: 0.25rem;
+      border-radius: 0;
+      -moz-appearance: textfield;
+    }
+
+    .time-inputs input::-webkit-outer-spin-button,
+    .time-inputs input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #D4BFA0;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      transition: transform 0.2s;
+    }
+
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
     /* ── Credit ── */
     #credit {
       font-family: 'Lexend', sans-serif;
@@ -262,6 +394,10 @@
   </style>
 </head>
 <body>
+  <button id="settings-btn" aria-label="Settings">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.14,12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4,2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24,0-.43.17-.47.41L9.25,5.35c-.59.24-1.13.56-1.62.94L5.24,5.33c-.22-.08-.47,0-.59.22L2.74,8.87c-.12.21-.08.47.12.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s.02.64.07.94L2.84,14.52c-.18.14-.23.41-.12.61l1.92,3.32c.12.22.37.29.59.22l2.39-.96c.5.38,1.03.7,1.62.94l.36,2.54c.05.24.24.41.48.41h3.84c.24,0,.44-.17.47-.41l.36-2.54c.59-.24,1.13-.56,1.62-.94l2.39.96c.22.08.47,0,.59-.22l1.92-3.32c.12-.22.07-.47-.12-.61ZM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6,3.6,1.62,3.6,3.6-1.62,3.6-3.6,3.6Z"/></svg>
+  </button>
+
   <div id="header">
     <h1>WaffleClock</h1>
     <p>Tap Start, flip when it beeps, and collect perfect waffles every time.</p>
@@ -299,17 +435,52 @@
     <button id="stop-btn" class="hidden">Stop Waffling Around</button>
   </div>
 
+  <div id="settings-overlay" class="hidden">
+    <div id="settings-modal">
+      <button id="settings-close" aria-label="Close">×</button>
+      <h2>Settings</h2>
+
+      <div class="setting-row">
+        <label for="s1-min">Side 1 Timer</label>
+        <div class="time-inputs">
+          <input type="number" id="s1-min" min="0" max="59" value="1">
+          <span>:</span>
+          <input type="number" id="s1-sec" min="0" max="59" value="00">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="s2-min">Side 2 Timer</label>
+        <div class="time-inputs">
+          <input type="number" id="s2-min" min="0" max="59" value="3">
+          <span>:</span>
+          <input type="number" id="s2-sec" min="0" max="59" value="00">
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="plate-anim-toggle">Plate Animation</label>
+        <label class="toggle">
+          <input type="checkbox" id="plate-anim-toggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
   <p id="credit">Waffle by Yeong Rong Kim from <a href="https://thenounproject.com/browse/icons/term/waffle/" target="_blank" title="Waffle Icons">Noun Project</a> (CC BY 3.0) &nbsp;·&nbsp; <a href="https://cooking.nytimes.com/recipes/1017409-waffles" target="_blank">Favorite recipe</a></p>
 
   <script>
     // ── Constants ────────────────────────────────────────────────────────────
     const PHASES = { IDLE: 'IDLE', SIDE1: 'SIDE1', WAIT_FLIP: 'WAIT_FLIP', SIDE2: 'SIDE2', DONE: 'DONE', SUMMARY: 'SUMMARY' };
-    const SIDE1_MS = 60_000;
-    const SIDE2_MS = 180_000;
-    const TOTAL_COOK_MS = SIDE1_MS + SIDE2_MS;
+    let side1Ms = 60_000;
+    let side2Ms = 180_000;
+    let plateAnimEnabled = true;
 
     const COLOR_START = { r: 248, g: 250, b: 220 }; // #F8FADC
     const COLOR_END   = { r: 228, g: 188, b: 128 }; // #E4BC80
+
+    function totalCookMs() { return side1Ms + side2Ms; }
 
     // ── State ────────────────────────────────────────────────────────────────
     let state = PHASES.IDLE;
@@ -398,7 +569,7 @@
     function updateWaffleColor() {
       if (state !== PHASES.SIDE1 && state !== PHASES.SIDE2 && state !== PHASES.WAIT_FLIP) return;
       const elapsed = performance.now() - cookStartTime;
-      const tLinear = Math.min(1, elapsed / TOTAL_COOK_MS);
+      const tLinear = Math.min(1, elapsed / totalCookMs());
       const t = tLinear * tLinear;
       const r = lerpChannel(COLOR_START.r, COLOR_END.r, t);
       const g = lerpChannel(COLOR_START.g, COLOR_END.g, t);
@@ -442,7 +613,7 @@
       el.style.top  = (cy - 15) + 'px';
       const rot = (Math.random() * 40 - 20).toFixed(1);
       el.style.setProperty('--rot', rot + 'deg');
-      el.classList.add('dropping');
+      if (plateAnimEnabled) el.classList.add('dropping');
       el.addEventListener('animationend', () => {
         el.style.transform = `rotate(${rot}deg)`;
         el.classList.remove('dropping');
@@ -462,7 +633,7 @@
       if (newPhase === PHASES.SIDE1) {
         cookStartTime = performance.now();
         waffleGroup.setAttribute('fill', '#F8FADC');
-        startTimer(SIDE1_MS);
+        startTimer(side1Ms);
       } else if (newPhase === PHASES.DONE) {
         stopTimer();
         playLoudBeep();
@@ -546,11 +717,11 @@
       doFlipAnimation(
         () => {
           phaseLabel.textContent = 'Side 2';
-          timerDisp.textContent = formatTime(SIDE2_MS);
+          timerDisp.textContent = formatTime(side2Ms);
         },
         () => {
           state = PHASES.SIDE2;
-          startTimer(SIDE2_MS);
+          startTimer(side2Ms);
         }
       );
     });
@@ -559,6 +730,41 @@
       ensureAudio();
       setState(PHASES.SUMMARY);
     });
+
+    // ── Settings ─────────────────────────────────────────────────────────────
+    const settingsBtn     = document.getElementById('settings-btn');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const settingsClose   = document.getElementById('settings-close');
+    const s1MinInput      = document.getElementById('s1-min');
+    const s1SecInput      = document.getElementById('s1-sec');
+    const s2MinInput      = document.getElementById('s2-min');
+    const s2SecInput      = document.getElementById('s2-sec');
+    const plateAnimToggle = document.getElementById('plate-anim-toggle');
+
+    function openSettings() {
+      const s1 = Math.round(side1Ms / 1000);
+      const s2 = Math.round(side2Ms / 1000);
+      s1MinInput.value = Math.floor(s1 / 60);
+      s1SecInput.value = String(s1 % 60).padStart(2, '0');
+      s2MinInput.value = Math.floor(s2 / 60);
+      s2SecInput.value = String(s2 % 60).padStart(2, '0');
+      plateAnimToggle.checked = plateAnimEnabled;
+      settingsOverlay.classList.remove('hidden');
+    }
+
+    function closeSettings() {
+      const s1 = (parseInt(s1MinInput.value) || 0) * 60 + (parseInt(s1SecInput.value) || 0);
+      const s2 = (parseInt(s2MinInput.value) || 0) * 60 + (parseInt(s2SecInput.value) || 0);
+      if (s1 > 0) side1Ms = s1 * 1000;
+      if (s2 > 0) side2Ms = s2 * 1000;
+      plateAnimEnabled = plateAnimToggle.checked;
+      settingsOverlay.classList.add('hidden');
+    }
+
+    settingsBtn.addEventListener('click', openSettings);
+    settingsClose.addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) closeSettings(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
 
     // ── Init ──────────────────────────────────────────────────────────────────
     render();
