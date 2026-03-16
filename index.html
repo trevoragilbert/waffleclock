@@ -247,11 +247,19 @@
 
     #stop-btn.hidden { display: none; }
 
-    /* ── Settings button ── */
-    #settings-btn {
+    /* ── Toolbar (settings + reset) ── */
+    #toolbar {
       position: fixed;
       top: 1rem;
       right: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #toolbar.hidden { display: none; }
+
+    #settings-btn, #reset-btn {
       background: none;
       border: none;
       cursor: pointer;
@@ -261,7 +269,16 @@
       line-height: 0;
     }
 
-    #settings-btn:hover { opacity: 0.7; }
+    #settings-btn:hover, #reset-btn:hover { opacity: 0.7; }
+
+    #reset-btn {
+      font-family: 'Lexend', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      line-height: 1;
+      padding: 0.3rem 0.1rem;
+    }
 
     /* ── Settings modal ── */
     #settings-overlay {
@@ -394,9 +411,12 @@
   </style>
 </head>
 <body>
-  <button id="settings-btn" aria-label="Settings">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.14,12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4,2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24,0-.43.17-.47.41L9.25,5.35c-.59.24-1.13.56-1.62.94L5.24,5.33c-.22-.08-.47,0-.59.22L2.74,8.87c-.12.21-.08.47.12.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s.02.64.07.94L2.84,14.52c-.18.14-.23.41-.12.61l1.92,3.32c.12.22.37.29.59.22l2.39-.96c.5.38,1.03.7,1.62.94l.36,2.54c.05.24.24.41.48.41h3.84c.24,0,.44-.17.47-.41l.36-2.54c.59-.24,1.13-.56,1.62-.94l2.39.96c.22.08.47,0,.59-.22l1.92-3.32c.12-.22.07-.47-.12-.61ZM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6,3.6,1.62,3.6,3.6-1.62,3.6-3.6,3.6Z"/></svg>
-  </button>
+  <div id="toolbar">
+    <button id="reset-btn" aria-label="Reset">Reset</button>
+    <button id="settings-btn" aria-label="Settings">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M19.14,12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4,2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24,0-.43.17-.47.41L9.25,5.35c-.59.24-1.13.56-1.62.94L5.24,5.33c-.22-.08-.47,0-.59.22L2.74,8.87c-.12.21-.08.47.12.61l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s.02.64.07.94L2.84,14.52c-.18.14-.23.41-.12.61l1.92,3.32c.12.22.37.29.59.22l2.39-.96c.5.38,1.03.7,1.62.94l.36,2.54c.05.24.24.41.48.41h3.84c.24,0,.44-.17.47-.41l.36-2.54c.59-.24,1.13-.56,1.62-.94l2.39.96c.22.08.47,0,.59-.22l1.92-3.32c.12-.22.07-.47-.12-.61ZM12,15.6c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6,3.6,1.62,3.6,3.6-1.62,3.6-3.6,3.6Z"/></svg>
+    </button>
+  </div>
 
   <div id="header">
     <h1>WaffleClock</h1>
@@ -650,6 +670,8 @@
       actionBtn.classList.add('hidden');
       flipBtn.classList.add('hidden');
 
+      const isRunning = state === PHASES.SIDE1 || state === PHASES.SIDE2;
+      toolbar.classList.toggle('hidden', isRunning);
       const inSession = state !== PHASES.IDLE && state !== PHASES.SUMMARY;
       stopBtn.classList.toggle('hidden', !inSession);
 
@@ -734,7 +756,9 @@
     });
 
     // ── Settings ─────────────────────────────────────────────────────────────
+    const toolbar         = document.getElementById('toolbar');
     const settingsBtn     = document.getElementById('settings-btn');
+    const resetBtn        = document.getElementById('reset-btn');
     const settingsOverlay = document.getElementById('settings-overlay');
     const settingsClose   = document.getElementById('settings-close');
     const s1MinInput      = document.getElementById('s1-min');
@@ -761,7 +785,17 @@
       if (s2 > 0) side2Ms = s2 * 1000;
       plateAnimEnabled = plateAnimToggle.checked;
       settingsOverlay.classList.add('hidden');
+      if (state === PHASES.IDLE) timerDisp.textContent = formatTime(side1Ms);
     }
+
+    resetBtn.addEventListener('click', () => {
+      stopTimer();
+      waffleCount = 0;
+      updateCountLabel();
+      plateWaffles.innerHTML = '';
+      waffleGroup.setAttribute('fill', '#F8FADC');
+      setState(PHASES.IDLE);
+    });
 
     settingsBtn.addEventListener('click', openSettings);
     settingsClose.addEventListener('click', closeSettings);
