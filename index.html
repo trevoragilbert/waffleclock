@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>waffleflip</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #FFF8F0;
+      --text: #3E2723;
+      --accent: #F59E0B;
+    }
+
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      transition: background-color 0.4s ease;
+      padding: 1rem;
+    }
+
+    body.phase-side1 { background-color: #FFF3E0; }
+    body.phase-side2 { background-color: #FFE0B2; }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    /* Flip container */
+    #flip-container {
+      perspective: 800px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    #flip-inner {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      backface-visibility: hidden;
+    }
+
+    #flip-inner.flipping {
+      animation: flipTimer 600ms ease-in-out forwards;
+    }
+
+    @keyframes flipTimer {
+      0%   { transform: rotateX(0deg); }
+      100% { transform: rotateX(180deg); }
+    }
+
+    #waffle-icon {
+      width: clamp(60px, 18vw, 100px);
+      height: clamp(60px, 18vw, 100px);
+    }
+
+    #phase-label {
+      font-family: 'Lexend', sans-serif;
+      font-weight: 600;
+      font-size: clamp(1rem, 4vw, 1.4rem);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text);
+      min-height: 1.6em;
+      text-align: center;
+    }
+
+    #timer-display {
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: clamp(4rem, 22vw, 8rem);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      text-align: center;
+    }
+
+    #action-btn {
+      font-family: 'Lexend', sans-serif;
+      font-weight: 600;
+      font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      background-color: var(--accent);
+      color: var(--text);
+      border: none;
+      border-radius: 0;
+      cursor: pointer;
+      min-height: 52px;
+      min-width: 180px;
+      padding: 0 2rem;
+    }
+
+    #action-btn:active {
+      opacity: 0.85;
+    }
+
+    #action-btn.hidden {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #waffle-count {
+      font-family: 'Lexend', sans-serif;
+      font-size: clamp(0.75rem, 3vw, 0.9rem);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="flip-container">
+      <div id="flip-inner">
+        <svg id="waffle-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect id="waffle-fill" x="5" y="5" width="90" height="90" rx="8" fill="#F5E6C8"/>
+          <!-- grid lines horizontal -->
+          <line x1="5"  y1="28" x2="95" y2="28" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+          <line x1="5"  y1="50" x2="95" y2="50" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+          <line x1="5"  y1="72" x2="95" y2="72" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+          <!-- grid lines vertical -->
+          <line x1="28" y1="5"  x2="28" y2="95" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+          <line x1="50" y1="5"  x2="50" y2="95" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+          <line x1="72" y1="5"  x2="72" y2="95" stroke="#C68A2E" stroke-width="2" opacity="0.4"/>
+        </svg>
+        <div id="phase-label">Ready</div>
+        <div id="timer-display">1:00</div>
+      </div>
+    </div>
+    <button id="action-btn">Start</button>
+    <div id="waffle-count">0 waffles</div>
+  </div>
+
+  <script>
+    // ── Constants ────────────────────────────────────────────────────────────
+    const PHASES = { IDLE: 'IDLE', SIDE1: 'SIDE1', SIDE2: 'SIDE2', DONE: 'DONE' };
+    const SIDE1_MS = 60_000;
+    const SIDE2_MS = 180_000;
+    const TOTAL_COOK_MS = SIDE1_MS + SIDE2_MS;
+
+    // Color lerp: batter → golden
+    const COLOR_START = { r: 245, g: 230, b: 200 }; // #F5E6C8
+    const COLOR_END   = { r: 198, g: 138, b: 46  }; // #C68A2E
+
+    // ── State ────────────────────────────────────────────────────────────────
+    let state = PHASES.IDLE;
+    let waffleCount = 0;
+    let rafId = null;
+    let endTime = 0;
+    let cookStartTime = 0; // performance.now() when SIDE 1 began (persists into SIDE 2)
+    let audioCtx = null;
+
+    // ── DOM refs ─────────────────────────────────────────────────────────────
+    const body       = document.body;
+    const phaseLabel = document.getElementById('phase-label');
+    const timerDisp  = document.getElementById('timer-display');
+    const actionBtn  = document.getElementById('action-btn');
+    const countEl    = document.getElementById('waffle-count');
+    const waffleFill = document.getElementById('waffle-fill');
+    const flipInner  = document.getElementById('flip-inner');
+
+    // ── Audio ─────────────────────────────────────────────────────────────────
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playBeep(freq, duration, gain, delay = 0) {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime + delay);
+      gainNode.gain.linearRampToValueAtTime(gain, audioCtx.currentTime + delay + 0.01);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + delay + duration);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + duration + 0.05);
+    }
+
+    function playSubtleBeep() {
+      ensureAudio();
+      playBeep(440, 0.2, 0.3);
+    }
+
+    function playLoudBeep() {
+      ensureAudio();
+      playBeep(600, 0.4, 0.7, 0);
+      playBeep(600, 0.4, 0.7, 0.55);
+    }
+
+    // ── Timer ─────────────────────────────────────────────────────────────────
+    function formatTime(ms) {
+      const total = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function stopTimer() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    }
+
+    function tick() {
+      const remaining = endTime - performance.now();
+      timerDisp.textContent = formatTime(remaining);
+
+      // Update waffle color
+      updateWaffleColor();
+
+      if (remaining <= 0) {
+        if (state === PHASES.SIDE1) {
+          transitionSide1ToSide2();
+        } else if (state === PHASES.SIDE2) {
+          setState(PHASES.DONE);
+        }
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function startTimer(durationMs) {
+      stopTimer();
+      endTime = performance.now() + durationMs;
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ── Waffle color ──────────────────────────────────────────────────────────
+    function lerpChannel(a, b, t) {
+      return Math.round(a + (b - a) * t);
+    }
+
+    function updateWaffleColor() {
+      if (state !== PHASES.SIDE1 && state !== PHASES.SIDE2) return;
+      const elapsed = performance.now() - cookStartTime;
+      const t = Math.min(1, elapsed / TOTAL_COOK_MS);
+      const r = lerpChannel(COLOR_START.r, COLOR_END.r, t);
+      const g = lerpChannel(COLOR_START.g, COLOR_END.g, t);
+      const b = lerpChannel(COLOR_START.b, COLOR_END.b, t);
+      waffleFill.setAttribute('fill', `rgb(${r},${g},${b})`);
+    }
+
+    // ── Flip animation ────────────────────────────────────────────────────────
+    function transitionSide1ToSide2() {
+      stopTimer();
+      playSubtleBeep();
+      state = PHASES.SIDE2; // set early so color keeps tracking
+
+      flipInner.classList.add('flipping');
+
+      // At midpoint swap content
+      const midpoint = setTimeout(() => {
+        timerDisp.textContent = formatTime(SIDE2_MS);
+        phaseLabel.textContent = 'Flip — Side 2';
+      }, 300);
+
+      flipInner.addEventListener('animationend', () => {
+        flipInner.classList.remove('flipping');
+        // Reset transform so it reads naturally after 180° rotation
+        // The animation goes 0→180, so we need to counter-reset via style
+        flipInner.style.transform = 'rotateX(0deg)';
+        // Kick off side 2 timer
+        startTimer(SIDE2_MS);
+      }, { once: true });
+    }
+
+    // ── State machine ─────────────────────────────────────────────────────────
+    function setState(newPhase) {
+      state = newPhase;
+      render();
+
+      if (newPhase === PHASES.SIDE1) {
+        cookStartTime = performance.now();
+        waffleFill.setAttribute('fill', `#F5E6C8`);
+        flipInner.style.transform = '';
+        startTimer(SIDE1_MS);
+      } else if (newPhase === PHASES.DONE) {
+        stopTimer();
+        playLoudBeep();
+        waffleCount++;
+        countEl.textContent = `${waffleCount} ${waffleCount === 1 ? 'waffle' : 'waffles'}`;
+        timerDisp.textContent = '0:00';
+      }
+    }
+
+    function render() {
+      // Phase label & timer static display
+      switch (state) {
+        case PHASES.IDLE:
+          phaseLabel.textContent = 'Ready';
+          timerDisp.textContent = '1:00';
+          body.className = '';
+          actionBtn.textContent = 'Start';
+          actionBtn.classList.remove('hidden');
+          break;
+        case PHASES.SIDE1:
+          phaseLabel.textContent = 'Side 1';
+          body.className = 'phase-side1';
+          actionBtn.classList.add('hidden');
+          break;
+        case PHASES.SIDE2:
+          phaseLabel.textContent = 'Flip — Side 2';
+          body.className = 'phase-side2';
+          actionBtn.classList.add('hidden');
+          break;
+        case PHASES.DONE:
+          phaseLabel.textContent = 'Done';
+          body.className = '';
+          actionBtn.textContent = 'Next Waffle';
+          actionBtn.classList.remove('hidden');
+          break;
+      }
+    }
+
+    // ── Button ────────────────────────────────────────────────────────────────
+    actionBtn.addEventListener('click', () => {
+      ensureAudio();
+      if (state === PHASES.IDLE || state === PHASES.DONE) {
+        setState(PHASES.SIDE1);
+      }
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    render();
+  </script>
+</body>
+</html>
